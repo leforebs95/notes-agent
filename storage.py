@@ -17,12 +17,11 @@ from config import PROCESSED_DIR, INDEX_DIR, RAW_DIR, ANTHROPIC_API_KEY
 class DocumentStorage:
     """Manages document storage and metadata"""
     
-    # Initialize Anthropic client as class variable
-    anthropic_client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
-    
     def __init__(self):
         self.metadata_file = INDEX_DIR / "document_metadata.json"
         self.metadata = self._load_metadata()
+        # Initialize Anthropic client as instance variable
+        self.anthropic_client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
     
     def _load_metadata(self) -> Dict[str, Any]:
         """Load document metadata from storage"""
