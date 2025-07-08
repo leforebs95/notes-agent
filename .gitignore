@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables
+.env
+
+# Project data directories
+data/
+
+# Logs
+*.log
+notes_mcp_server.log
+
+# API keys and sensitive config
+claude_desktop_config.json
