@@ -15,7 +15,8 @@ from mcp.types import (
     TextContent,
     CallToolResult,
 )
-from logging import logger
+from loguru import logger
+from anthropic import AsyncAnthropic
 
 from config import (
     SERVER_NAME, 
@@ -24,7 +25,8 @@ from config import (
     PROCESSED_DIR, 
     INDEX_DIR,
     LOG_FILE,
-    LOG_LEVEL
+    LOG_LEVEL,
+    ANTHROPIC_API_KEY
 )
 from storage import DocumentStorage
 
@@ -38,6 +40,68 @@ server = Server(SERVER_NAME)
 
 # Initialize storage
 storage = DocumentStorage()
+
+# Initialize Anthropic client
+anthropic_client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+
+async def process_raw_file(filename: str) -> str:
+    """Process a raw file through LLM to improve formatting and fix OCR errors"""
+    
+    # Check if API key is available
+    if not anthropic_client:
+        return "Error: ANTHROPIC_API_KEY not configured. Please set the API key in your environment."
+    
+    # Check if file exists and needs processing
+    raw_file = RAW_DIR / filename
+    if not raw_file.exists():
+        return f"Error: File '{filename}' not found in raw directory"
+    
+    # Read raw file content
+    raw_content = storage.read_raw_file(filename)
+    if raw_content is None:
+        return f"Error: Could not read file '{filename}'"
+    
+    try:
+        # Process the content through LLM
+        logger.info(f"Processing file {filename} through LLM...")
+        
+        system_prompt = """You are a document processor that improves handwritten text that has been converted through OCR. Your task is to:
+
+1. Fix OCR errors and typos
+2. Improve formatting and structure
+3. Maintain the original meaning and content
+4. Organize the text into proper paragraphs
+5. Fix punctuation and capitalization
+6. Preserve important information like dates, names, numbers
+
+Return only the cleaned and formatted text without any additional commentary or explanation."""
+
+        response = await anthropic_client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=4000,
+            system=system_prompt,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Please process and improve this handwritten text:\n\n{raw_content}"
+                }
+            ]
+        )
+        
+        processed_content = response.content[0].text
+        
+        # Write processed content to file
+        if storage.write_processed_file(filename, processed_content):
+            # Update metadata
+            storage.mark_file_processed(raw_file, PROCESSED_DIR / filename)
+            
+            return f"✅ Successfully processed '{filename}'\n\nProcessed content saved to: {PROCESSED_DIR / filename}\n\nPreview of processed content:\n{processed_content[:300]}{'...' if len(processed_content) > 300 else ''}"
+        else:
+            return f"Error: Failed to save processed content for '{filename}'"
+    
+    except Exception as e:
+        logger.error(f"Error processing file {filename}: {e}")
+        return f"Error processing file '{filename}': {str(e)}"
 
 @server.list_tools()
 async def list_tools() -> List[Tool]:
@@ -128,6 +192,20 @@ async def list_tools() -> List[Tool]:
                 "type": "object",
                 "properties": {},
                 "required": []
+            }
+        ),
+        Tool(
+            name="process_raw_file",
+            description="Process a raw handwritten text file through LLM to improve formatting, fix typos, and correct OCR errors",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "filename": {
+                        "type": "string",
+                        "description": "Name of the raw file to process"
+                    }
+                },
+                "required": ["filename"]
             }
         )
     ]
@@ -286,6 +364,18 @@ Status: ✅ Ready for Phase 2 development"""
             
             return CallToolResult(
                 content=[TextContent(type="text", text=status_text)]
+            )
+        
+        elif name == "process_raw_file":
+            filename = arguments.get("filename")
+            if not filename:
+                return CallToolResult(
+                    content=[TextContent(type="text", text="Error: filename is required")]
+                )
+            
+            result = await process_raw_file(filename)
+            return CallToolResult(
+                content=[TextContent(type="text", text=result)]
             )
         
         else:
