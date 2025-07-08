@@ -10,15 +10,15 @@ This is a Model Context Protocol (MCP) server for managing handwritten notes tha
 
 ### Running the Server
 ```bash
-python server.py
+uv run python server.py
 ```
 
 ### Installing Dependencies
 ```bash
-pip install -r requirements.txt
-# Or with uv:
 uv sync
 ```
+
+When running python always use uv run python <modeule-name>
 
 ### Testing the Server
 Place test files in `data/raw/` directory and interact through Claude Desktop with configured MCP server.
