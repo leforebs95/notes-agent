@@ -15,7 +15,7 @@ from mcp.types import (
     TextContent,
     CallToolResult,
 )
-from logging import logger
+from loguru import logger
 
 from config import (
     SERVER_NAME, 
@@ -128,6 +128,20 @@ async def list_tools() -> List[Tool]:
                 "type": "object",
                 "properties": {},
                 "required": []
+            }
+        ),
+        Tool(
+            name="process_raw_file",
+            description="Process a raw handwritten text file through LLM to improve formatting, fix typos, and correct OCR errors",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "filename": {
+                        "type": "string",
+                        "description": "Name of the raw file to process"
+                    }
+                },
+                "required": ["filename"]
             }
         )
     ]
@@ -286,6 +300,18 @@ Status: ✅ Ready for Phase 2 development"""
             
             return CallToolResult(
                 content=[TextContent(type="text", text=status_text)]
+            )
+        
+        elif name == "process_raw_file":
+            filename = arguments.get("filename")
+            if not filename:
+                return CallToolResult(
+                    content=[TextContent(type="text", text="Error: filename is required")]
+                )
+            
+            result = await storage.process_raw_file(filename)
+            return CallToolResult(
+                content=[TextContent(type="text", text=result)]
             )
         
         else:
