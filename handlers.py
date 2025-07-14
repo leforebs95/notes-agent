@@ -18,7 +18,7 @@ class ListRawFilesHandler(BaseToolHandler):
         text = f"Found {len(file_list)} raw files:\n" + "\n".join(
             f"• {f}" for f in file_list
         )
-        return self.create_text_response(text)
+        return [TextContent(text=text)]
 
     def get_tool_definition(self) -> Tool:
         return Tool(
@@ -37,7 +37,7 @@ class ListProcessedFilesHandler(BaseToolHandler):
         text = f"Found {len(file_list)} processed files:\n" + "\n".join(
             f"• {f}" for f in file_list
         )
-        return self.create_text_response(text)
+        return [TextContent(text=text)]
 
     def get_tool_definition(self) -> Tool:
         return Tool(
@@ -61,7 +61,7 @@ class ReadRawFileHandler(BaseToolHandler):
                 f"Error: Could not read file '{filename}' or file does not exist"
             )
 
-        return self.create_text_response(f"Content of '{filename}':\n\n{content}")
+        return [TextContent(text=f"Content of '{filename}':\n\n{content}")]
 
     def get_tool_definition(self) -> Tool:
         return Tool(
@@ -85,18 +85,14 @@ class ReadProcessedFileHandler(BaseToolHandler):
 
     async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
         if error := self.validate_required_args(arguments, ["filename"]):
-            return self.create_text_response(error)
+            return [TextContent(text=error)]
 
         filename = arguments["filename"]
         content = self.storage.read_processed_file(filename)
         if content is None:
-            return self.create_text_response(
-                f"Error: Could not read processed file '{filename}' or file does not exist"
-            )
+            return [TextContent(text=f"Error: Could not read processed file '{filename}' or file does not exist")]
 
-        return self.create_text_response(
-            f"Content of processed '{filename}':\n\n{content}"
-        )
+        return [TextContent(text=f"Content of processed '{filename}':\n\n{content}")]
 
     def get_tool_definition(self) -> Tool:
         return Tool(
@@ -120,18 +116,18 @@ class GetDocumentInfoHandler(BaseToolHandler):
 
     async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
         if error := self.validate_required_args(arguments, ["filename"]):
-            return self.create_text_response(error)
+            return [TextContent(text=error)]
 
         filename = arguments["filename"]
         info = self.storage.get_document_info(filename)
         if info is None:
-            return self.create_text_response(f"No metadata found for '{filename}'")
+            return [TextContent(text=f"No metadata found for '{filename}'")]
 
         info_text = f"Document Information for '{filename}':\n\n"
         for key, value in info.items():
             info_text += f"• {key}: {value}\n"
 
-        return self.create_text_response(info_text)
+        return [TextContent(text=info_text)]
 
     def get_tool_definition(self) -> Tool:
         return Tool(
@@ -157,7 +153,7 @@ class ListAllDocumentsHandler(BaseToolHandler):
         all_docs = self.storage.list_all_documents()
 
         if not all_docs:
-            return self.create_text_response("No documents found in the system")
+            return [TextContent(text="No documents found in the system")]
 
         result_text = f"All Documents ({len(all_docs)} total):\n\n"
         for filename, info in all_docs.items():
@@ -166,7 +162,7 @@ class ListAllDocumentsHandler(BaseToolHandler):
             result_text += f"   Size: {info.get('size', 0)} bytes\n"
             result_text += f"   Hash: {info.get('hash', 'Unknown')[:8]}...\n\n"
 
-        return self.create_text_response(result_text)
+        return [TextContent(text=result_text)]
 
     def get_tool_definition(self) -> Tool:
         return Tool(
@@ -183,15 +179,13 @@ class CheckFilesNeedingProcessingHandler(BaseToolHandler):
         files_needing_processing = self.storage.get_files_needing_processing()
 
         if not files_needing_processing:
-            return self.create_text_response(
-                "✅ All files are up to date - no processing needed"
-            )
+            return [TextContent(text="All files are up to date - no processing needed")]
 
         file_list = [f.name for f in files_needing_processing]
         text = f"📋 Found {len(file_list)} files needing processing:\n" + "\n".join(
             f"• {f}" for f in file_list
         )
-        return self.create_text_response(text)
+        return [TextContent(text=text)]
 
     def get_tool_definition(self) -> Tool:
         return Tool(
@@ -223,7 +217,7 @@ Directory Structure:
 
 Status: ✅ Ready for Phase 2 development"""
 
-        return self.create_text_response(status_text)
+        return [TextContent(text=status_text)]
 
     def get_tool_definition(self) -> Tool:
         return Tool(
@@ -238,11 +232,11 @@ class ProcessRawFileHandler(BaseToolHandler):
 
     async def execute(self, arguments: Dict[str, Any]) -> List[TextContent]:
         if error := self.validate_required_args(arguments, ["filename"]):
-            return self.create_text_response(error)
+            return [TextContent(text=error)]
 
         filename = arguments["filename"]
         result = await self.storage.process_raw_file(filename)
-        return self.create_text_response(result)
+        return [TextContent(text=result)]
 
     def get_tool_definition(self) -> Tool:
         return Tool(

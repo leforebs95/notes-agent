@@ -5,7 +5,7 @@ Provides a structured approach to managing tool handlers
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional, Callable, Awaitable
-from mcp.types import TextContent, AudioContent, ImageContent, Tool
+from mcp.types import ContentBlock, Tool
 from loguru import logger
 
 
@@ -18,7 +18,7 @@ class BaseToolHandler(ABC):
     @abstractmethod
     async def execute(
         self, arguments: Dict[str, Any]
-    ) -> List[TextContent | ImageContent | AudioContent]:
+    ) -> List[ContentBlock]:
         """Execute the tool with given arguments"""
         pass
 
@@ -35,14 +35,6 @@ class BaseToolHandler(ABC):
             if not arguments.get(arg):
                 return f"Error: {arg} is required"
         return None
-
-    def create_text_response(self, text: str) -> List[TextContent]:
-        """Create a standard text response"""
-        return [TextContent(type="text", text=text)]
-
-    def create_image_response(self, audio: str) -> List[AudioContent]:
-        """Create a standard audio response"""
-        return [AudioContent(type="audio", data=audio)]
 
 
 class ToolRegistry:
